@@ -14,7 +14,7 @@ files, and it never needs the server to know who the user is.
 | Setting | Value |
 |---|---|
 | Root Directory | `api` |
-| Build command | `npm ci && npm run build` |
+| Build command | `npm ci --include=dev && npm run build` |
 | Start command | `npm start` |
 | Health check path | `/health` |
 
