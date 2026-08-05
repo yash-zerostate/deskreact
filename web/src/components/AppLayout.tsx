@@ -46,7 +46,8 @@ export function AppLayout() {
 
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-slate-400 sm:inline">
-              {user?.workspace} · <span className="uppercase">{user?.role}</span>
+              {user?.workspace} · <span className="uppercase">{user?.plan}</span> · {user?.role} ·
+              risk {user?.riskScore}
             </span>
             <button type="button" onClick={handleLogout} className="btn-ghost">
               Sign out

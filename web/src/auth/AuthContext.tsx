@@ -17,14 +17,24 @@ import {
   setSessionLostHandler,
 } from "@/lib/apiClient";
 
+/** The shared user profile, plus the workspace this account's tickets live in. */
 export type User = {
   id: string;
   name: string;
   email: string;
-  role: "agent" | "supervisor" | "admin";
-  plan: "starter" | "team" | "business";
+  active: boolean;
+  plan: "free" | "pro" | "enterprise";
+  role: "developer" | "security" | "marketing" | "compliance";
+  riskScore: number;
   workspace: string;
-  timezone: string;
+};
+
+export type ProfileInput = {
+  name: string;
+  active: "yes" | "no";
+  plan: User["plan"];
+  role: User["role"];
+  riskScore: number;
 };
 
 type AuthResult = { ok: true } | { ok: false; message: string; fields?: Record<string, string> };
@@ -34,14 +44,9 @@ type AuthContextValue = {
   /** True until the first session check finishes — routes wait on this. */
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthResult>;
-  register: (input: {
-    name: string;
-    email: string;
-    password: string;
-    workspace: string;
-  }) => Promise<AuthResult>;
+  register: (input: Record<string, string>) => Promise<AuthResult>;
   logout: () => Promise<void>;
-  updateProfile: (input: { name: string; timezone: string }) => Promise<AuthResult>;
+  updateProfile: (input: ProfileInput) => Promise<AuthResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);

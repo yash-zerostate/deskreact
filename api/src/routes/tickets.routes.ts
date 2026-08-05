@@ -158,8 +158,11 @@ ticketsRouter.post("/:id/comments", validateBody(commentSchema), async (req, res
   res.status(201).json({ ticket: serialise(ticket) });
 });
 
-/** Deleting is destructive, so it is restricted to workspace admins. */
-ticketsRouter.delete("/:id", requireRole("admin"), async (req, res) => {
+/**
+ * Deleting is destructive and permanent, so it is restricted to the roles that
+ * would own data removal in a real support org.
+ */
+ticketsRouter.delete("/:id", requireRole("security", "compliance"), async (req, res) => {
   const { id } = req.params;
   if (!Types.ObjectId.isValid(id)) throw new HttpError(400, "invalid_id", "Unknown ticket.");
 

@@ -4,12 +4,15 @@ import jwt from "jsonwebtoken";
 
 import { config } from "../config/env.js";
 
+/** Mirrors the shared user profile, plus the workspace this session is scoped to. */
 export type AccessClaims = {
   sub: string;
   email: string;
   name: string;
-  role: "agent" | "supervisor" | "admin";
-  plan: "starter" | "team" | "business";
+  active: boolean;
+  plan: "free" | "pro" | "enterprise";
+  role: "developer" | "security" | "marketing" | "compliance";
+  riskScore: number;
   workspace: string;
   sid: string;
 };
@@ -44,8 +47,10 @@ export function verifyAccessToken(token: string): AccessClaims | null {
       sub: String(payload.sub),
       email: String(payload.email ?? ""),
       name: String(payload.name ?? ""),
-      role: (payload.role as AccessClaims["role"]) ?? "agent",
-      plan: (payload.plan as AccessClaims["plan"]) ?? "starter",
+      active: payload.active !== false,
+      plan: (payload.plan as AccessClaims["plan"]) ?? "free",
+      role: (payload.role as AccessClaims["role"]) ?? "developer",
+      riskScore: typeof payload.riskScore === "number" ? payload.riskScore : 1,
       workspace: String(payload.workspace ?? ""),
       sid: String(payload.sid ?? ""),
     };

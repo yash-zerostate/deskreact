@@ -4,15 +4,55 @@ import mongoose from "mongoose";
 import { config } from "../src/config/env.js";
 import { hashPassword } from "../src/lib/password.js";
 import { Ticket } from "../src/models/Ticket.js";
-import { User } from "../src/models/User.js";
+import { PLANS, ROLES, User } from "../src/models/User.js";
+
+/**
+ * Accounts registered before the profile schema changed are missing the new
+ * fields, or carry a role from the old set (agent/supervisor/admin). Reading
+ * them still works, but any save would fail validation — so bring every
+ * straggler onto the current shape.
+ */
+async function normaliseLegacyUsers(): Promise<void> {
+  const users = User.collection;
+
+  const filled = await users.updateMany(
+    { $or: [{ active: { $exists: false } }, { riskScore: { $exists: false } }] },
+    { $set: { active: true, riskScore: 1 } },
+  );
+  const roles = await users.updateMany(
+    { role: { $nin: ROLES as unknown as string[] } },
+    { $set: { role: "developer" } },
+  );
+  const plans = await users.updateMany(
+    { plan: { $nin: PLANS as unknown as string[] } },
+    { $set: { plan: "free" } },
+  );
+  const cleaned = await users.updateMany({}, { $unset: { timezone: "" } });
+
+  const touched = filled.modifiedCount + roles.modifiedCount + plans.modifiedCount;
+  if (touched > 0 || cleaned.modifiedCount > 0) {
+    console.log(
+      `  migrated ${touched} legacy user document(s), cleared stale fields on ${cleaned.modifiedCount}`,
+    );
+  }
+}
 
 const PASSWORD = "Password123!";
 const WORKSPACE = "Acme Support";
 
+/**
+ * The same accounts exist in all three demo apps, chosen to cover the whole
+ * attribute matrix — every plan, every role, both active states and a spread of
+ * risk scores. They all share one workspace so they see the same tickets.
+ */
 const ACCOUNTS = [
-  { name: "Aditi Rao", email: "admin@example.com", role: "admin", plan: "business" },
-  { name: "Rohan Mehta", email: "pro@example.com", role: "supervisor", plan: "team" },
-  { name: "Sara Iyer", email: "free@example.com", role: "agent", plan: "starter" },
+  { email: "admin@example.com", name: "Aditi Rao", active: true, plan: "enterprise", role: "compliance", riskScore: 2 },
+  { email: "pro@example.com", name: "Rohan Mehta", active: true, plan: "pro", role: "developer", riskScore: 5 },
+  { email: "free@example.com", name: "Sara Iyer", active: true, plan: "free", role: "marketing", riskScore: 7 },
+  { email: "security@example.com", name: "Imran Qureshi", active: true, plan: "pro", role: "security", riskScore: 9 },
+  { email: "inactive@example.com", name: "Neha Kapoor", active: false, plan: "pro", role: "developer", riskScore: 4 },
+  { email: "dev-free@example.com", name: "Kabir Shah", active: true, plan: "free", role: "developer", riskScore: 1 },
+  { email: "yash@gmail.com", name: "yash", active: true, plan: "enterprise", role: "marketing", riskScore: 8 },
 ] as const;
 
 const TICKETS = [
@@ -63,16 +103,23 @@ async function main() {
       {
         $set: {
           name: account.name,
-          role: account.role,
+          active: account.active,
           plan: account.plan,
+          role: account.role,
+          riskScore: account.riskScore,
           workspace: WORKSPACE,
         },
-        $setOnInsert: { passwordHash, timezone: "Asia/Kolkata" },
+        $setOnInsert: { passwordHash },
+        // Attribute from the previous schema, cleared so old documents do not
+        // keep stale fields around.
+        $unset: { timezone: "" },
       },
       { upsert: true, new: true },
     );
     firstUserId ??= user!._id;
-    console.log(`  user  ${account.email} (${account.role})`);
+    console.log(
+      `  user  ${account.email.padEnd(22)} ${account.plan.padEnd(10)} ${account.role.padEnd(10)} risk ${account.riskScore} ${account.active ? "" : "(inactive)"}`,
+    );
   }
 
   for (const ticket of TICKETS) {
@@ -86,6 +133,8 @@ async function main() {
     );
     console.log(`  tkt   ${ticket.reference}`);
   }
+
+  await normaliseLegacyUsers();
 
   console.log(`\nDone. All seeded accounts use the password: ${PASSWORD}`);
   await mongoose.disconnect();

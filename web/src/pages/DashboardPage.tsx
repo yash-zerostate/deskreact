@@ -46,7 +46,8 @@ export function DashboardPage() {
             Good to see you, {user?.name.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            {user?.workspace} · {user?.plan} plan
+            {user?.workspace} · {user?.plan} plan · {user?.role} · risk {user?.riskScore} ·{" "}
+            {user?.active ? "active" : "inactive"}
           </p>
         </div>
         <Link to="/tickets" className="btn-primary">

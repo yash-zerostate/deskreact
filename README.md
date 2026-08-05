@@ -33,7 +33,7 @@ npm run dev               # http://localhost:4003
 | `/signup` | public | Creates a workspace; the first user becomes its admin |
 | `/` | **protected** | Counts per status + the five highest-priority open tickets |
 | `/tickets` | **protected** | Queue with server-side filter/search, create, status change, replies |
-| `/profile` | **protected** | Edit display name and timezone |
+| `/profile` | **protected** | All six profile attributes, shown and editable |
 
 ## API
 
@@ -47,7 +47,7 @@ npm run dev               # http://localhost:4003
 | `GET/POST` | `/tickets` | Bearer — workspace comes from the token, never the query |
 | `GET/PATCH` | `/tickets/:id` | Bearer |
 | `POST` | `/tickets/:id/comments` | Bearer |
-| `DELETE` | `/tickets/:id` | Bearer + **admin** role |
+| `DELETE` | `/tickets/:id` | Bearer + **security or compliance** role |
 
 ## The token model
 
@@ -77,13 +77,10 @@ Consequences worth understanding:
 
 ## Seeded accounts
 
-All in the **Acme Support** workspace, password `Password123!`:
+All in the **Acme Support** workspace, password `Password123!`. The full
+attribute matrix is in the root README.
 
-| Email | Role |
-|-------|------|
-| `admin@example.com` | admin (can delete tickets) |
-| `pro@example.com` | supervisor |
-| `free@example.com` | agent |
-
-Sign in as `free@example.com` and call `DELETE /tickets/:id` — the API answers
-`403 forbidden`. The role check is real, not a hidden button.
+Sign in as `free@example.com` (role `marketing`) and call `DELETE /tickets/:id` —
+the API answers `403 forbidden`. Switch the role to `compliance` on `/profile`,
+sign in again, and the same call succeeds. The role check is real, not a hidden
+button.

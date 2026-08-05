@@ -12,19 +12,32 @@ import { User, publicUser } from "../models/User.js";
 const MAX_FAILED_LOGINS = 8;
 const LOCK_MINUTES = 15;
 
-const passwordSchema = z
-  .string()
-  .min(10, "Password must be at least 10 characters")
-  .max(128)
-  .regex(/[a-z]/, "Password needs a lowercase letter")
-  .regex(/[A-Z]/, "Password needs an uppercase letter")
-  .regex(/[0-9]/, "Password needs a number");
+/** No strength rules — any password works in this demo. */
+const passwordSchema = z.string().min(1, "Enter a password").max(128, "Password is too long");
 
+/**
+ * Sign-up collects the whole profile; only email and password are required and
+ * every attribute has a dropdown on the frontend, so accounts covering the
+ * whole matrix can be created without touching the database.
+ */
 const registerSchema = z.object({
-  name: z.string().trim().min(2, "Tell us your name").max(80),
+  name: z.string().trim().max(80).optional().default(""),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: passwordSchema,
-  workspace: z.string().trim().min(2, "Name your workspace").max(80),
+  workspace: z.string().trim().max(80).optional().default(""),
+  active: z.enum(["yes", "no"]).optional().default("yes"),
+  plan: z.enum(["free", "pro", "enterprise"]).optional().default("free"),
+  role: z
+    .enum(["developer", "security", "marketing", "compliance"])
+    .optional()
+    .default("developer"),
+  riskScore: z.coerce
+    .number()
+    .int("Pick a whole number")
+    .min(1, "Risk score starts at 1")
+    .max(9, "Risk score stops at 9")
+    .optional()
+    .default(1),
 });
 
 const loginSchema = z.object({
@@ -43,7 +56,12 @@ const authLimiter = rateLimit({
 export const authRouter = Router();
 
 authRouter.post("/register", authLimiter, validateBody(registerSchema), async (req, res) => {
-  const { name, email, password, workspace } = req.body as z.infer<typeof registerSchema>;
+  const body = req.body as z.infer<typeof registerSchema>;
+  const { email, password, active, plan, role, riskScore } = body;
+  // Both optional; fall back to something derived from the email so the UI
+  // always has a name to show and a workspace to scope tickets by.
+  const name = body.name || email.split("@")[0]!;
+  const workspace = body.workspace || `${name}'s workspace`;
 
   if (await User.exists({ email })) {
     res.status(409).json({
@@ -60,10 +78,12 @@ authRouter.post("/register", authLimiter, validateBody(registerSchema), async (r
     name,
     email,
     workspace,
+    plan,
+    role,
+    riskScore,
+    // A profile attribute carried in the token, not a login gate.
+    active: active === "yes",
     passwordHash: await hashPassword(password),
-    // The first person in a workspace runs it.
-    role: "admin",
-    plan: "starter",
     lastLoginAt: new Date(),
   });
 
@@ -163,16 +183,25 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
+/**
+ * The profile is editable in full here — including plan and risk score, which a
+ * real product would never let a user set on themselves. In this demo it is the
+ * fastest way to flip an existing account's attributes and watch targeting
+ * change without re-registering.
+ */
 const profileSchema = z.object({
-  name: z.string().trim().min(2, "Tell us your name").max(80),
-  timezone: z.string().trim().min(3).max(64),
+  name: z.string().trim().min(1, "Tell us your name").max(80),
+  active: z.enum(["yes", "no"]),
+  plan: z.enum(["free", "pro", "enterprise"]),
+  role: z.enum(["developer", "security", "marketing", "compliance"]),
+  riskScore: z.coerce.number().int().min(1).max(9),
 });
 
 authRouter.patch("/me", requireAuth, validateBody(profileSchema), async (req, res) => {
-  const { name, timezone } = req.body as z.infer<typeof profileSchema>;
+  const { name, active, plan, role, riskScore } = req.body as z.infer<typeof profileSchema>;
   const user = await User.findByIdAndUpdate(
     req.auth!.sub,
-    { $set: { name, timezone } },
+    { $set: { name, plan, role, riskScore, active: active === "yes" } },
     { new: true },
   );
   if (!user) {
