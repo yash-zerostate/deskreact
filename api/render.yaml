@@ -1,0 +1,37 @@
+# Render blueprint for the DeskDesk API.
+#
+# This file sits inside `api/`, so set Render's "Root Directory" to `api` —
+# the repo also contains the Vite SPA, which deploys separately to Vercel.
+services:
+  - type: web
+    name: deskdesk-api
+    runtime: node
+    plan: free
+    rootDir: api
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # set in the Render dashboard — never commit this
+      - key: MONGODB_DB
+        value: deskdesk_spa
+      - key: AUTH_JWT_SECRET
+        sync: false
+      - key: ACCESS_TOKEN_TTL_MIN
+        value: "15"
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: "30"
+      # The deployed SPA origin — CORS allows exactly this.
+      - key: WEB_ORIGIN
+        sync: false # e.g. https://deskreact.vercel.app
+      # The refresh cookie is the only cookie here, and it must survive a
+      # cross-site fetch from the SPA's origin.
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_DOMAIN
+        value: ""
