@@ -1,4 +1,5 @@
 import { config } from "../config/env.js";
+import { createPretaContextToken } from "./preta-token.js";
 import { RefreshToken } from "../models/RefreshToken.js";
 import { User, type UserDoc } from "../models/User.js";
 import {
@@ -15,7 +16,23 @@ export type IssuedTokens = {
   /** Seconds until the access token expires — the SPA schedules its refresh off this. */
   expiresIn: number;
   refreshToken: string;
+  /**
+   * Signed Preta context JWT. Travels in the response body, not a cookie: the SPA
+   * lives on a different registrable domain, so it writes the cookie on its own
+   * origin where the loader can actually read it.
+   */
+  pretaToken: string | null;
 };
+
+/** The attributes Preta targets on, taken straight off the user row. */
+function pretaAttributes(user: UserDoc) {
+  return {
+    plan: String(user.plan),
+    role: String(user.role),
+    active: user.active !== false,
+    risk_score: user.riskScore,
+  };
+}
 
 export type RequestContext = { userAgent?: string; ip?: string };
 
@@ -54,6 +71,7 @@ export async function issueSession(user: UserDoc, ctx: RequestContext = {}): Pro
     accessToken: signAccessToken(claimsFor(user, familyId)),
     expiresIn: accessTokenTtlSeconds(),
     refreshToken,
+    pretaToken: createPretaContextToken(pretaAttributes(user)),
   };
 }
 
@@ -115,6 +133,9 @@ export async function rotateSession(
       accessToken: signAccessToken(claimsFor(user, record.familyId)),
       expiresIn: accessTokenTtlSeconds(),
       refreshToken: nextToken,
+      // Re-signed from the LIVE user row, so an attribute changed since login is
+      // picked up on the next refresh rather than waiting for a re-login.
+      pretaToken: createPretaContextToken(pretaAttributes(user)),
     },
   };
 }

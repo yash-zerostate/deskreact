@@ -14,6 +14,8 @@
  * promise, so the refresh token is rotated once, not ten times — rotating it
  * concurrently would look like token reuse and log the user out.
  */
+import { clearPretaCookie, setPretaCookie } from "@/lib/preta";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5003";
 
 const ACCESS_TOKEN_KEY = "deskdesk_access_token";
@@ -90,10 +92,14 @@ export function refreshSession(): Promise<boolean> {
       const response = await rawFetch("/auth/refresh", { method: "POST" }, false);
       if (!response.ok) {
         setAccessToken(null);
+        clearPretaCookie();
         return false;
       }
-      const body = (await response.json()) as { accessToken: string };
+      const body = (await response.json()) as { accessToken: string; pretaToken?: string | null };
       setAccessToken(body.accessToken);
+      // The silent refresh doubles as the Preta cookie's refresh — nothing extra to
+      // schedule, and the cookie can never outlive the session that produced it.
+      setPretaCookie(body.pretaToken);
       return true;
     } catch {
       return false;

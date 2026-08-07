@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { REFRESH_COOKIE, clearRefreshCookie, setRefreshCookie } from "../lib/cookies.js";
 import { fakeVerify, hashPassword, verifyPassword } from "../lib/password.js";
+import { createPretaContextToken } from "../lib/preta-token.js";
 import { issueSession, revokeSession, rotateSession } from "../lib/sessions.js";
 import { requireAuth } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
@@ -208,5 +209,16 @@ authRouter.patch("/me", requireAuth, validateBody(profileSchema), async (req, re
     res.status(401).json({ error: { code: "unauthenticated", message: "Sign in to continue." } });
     return;
   }
-  res.json({ user: publicUser(user) });
+  // Hand back a freshly signed context token too. Without it the visitor keeps their
+  // old attributes until the next refresh, which makes changing plan or role on the
+  // profile page look like it did nothing.
+  res.json({
+    user: publicUser(user),
+    pretaToken: createPretaContextToken({
+      plan: String(user.plan),
+      role: String(user.role),
+      active: user.active !== false,
+      risk_score: user.riskScore,
+    }),
+  });
 });

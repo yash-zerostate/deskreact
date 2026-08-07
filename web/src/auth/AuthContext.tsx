@@ -16,6 +16,7 @@ import {
   setAccessToken,
   setSessionLostHandler,
 } from "@/lib/apiClient";
+import { clearPretaCookie, setPretaCookie } from "@/lib/preta";
 
 /** The shared user profile, plus the workspace this account's tickets live in. */
 export type User = {
@@ -51,7 +52,12 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-type AuthResponse = { user: User; accessToken: string; expiresIn: number };
+type AuthResponse = {
+  user: User;
+  accessToken: string;
+  expiresIn: number;
+  pretaToken?: string | null;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -119,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionLostHandler(() => {
       setUser(null);
       setAccessToken(null);
+      clearPretaCookie();
       clearTimer();
     });
     return () => setSessionLostHandler(null);
@@ -138,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setAccessToken(result.data.accessToken);
+      setPretaCookie(result.data.pretaToken);
       setUser(result.data.user);
       scheduleRefresh(result.data.expiresIn);
       return { ok: true };
@@ -155,16 +163,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Revoke server-side first; only then forget the token locally.
         await api("/auth/logout", { method: "POST" });
         setAccessToken(null);
+        // Dropping the cookie is what removes personalised elements — the loader
+        // finds no context on the next evaluation and the edge matches nothing.
+        clearPretaCookie();
         setUser(null);
         clearTimer();
       },
       updateProfile: async (input) => {
-        const result = await api<{ user: User }>("/auth/me", {
+        const result = await api<{ user: User; pretaToken?: string | null }>("/auth/me", {
           method: "PATCH",
           body: JSON.stringify(input),
         });
         if (!result.ok) return { ok: false, message: result.message, fields: result.fields };
         setUser(result.data.user);
+        // Attributes just changed, so refresh the context immediately rather than
+        // leaving the visitor on their old ones until the next token refresh.
+        setPretaCookie(result.data.pretaToken);
         return { ok: true };
       },
     }),
