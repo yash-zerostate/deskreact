@@ -1,24 +1,32 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DeskDesk — shared inbox for support teams</title>
-    <meta
-      name="description"
-      content="DeskDesk is a small, fast shared inbox: tickets, replies and status, without the bloat."
-    />
-    <!-- Preta loader. The signed context JWT lives in the `preta_ctx` cookie, which
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeskDesk — shared inbox for support teams</title>
+  <meta name="description"
+    content="DeskDesk is a small, fast shared inbox: tickets, replies and status, without the bloat." />
+  <!-- Preta loader. The signed context JWT lives in the `preta_ctx` cookie, which
          this app writes on its own origin after login (see src/lib/preta.ts) — the
          API is on another domain, so a cookie set there would not be readable here. -->
-    <script
+  <!-- <script
       src="https://yash-loader-worker.pushkarnagwekar.workers.dev/boot?d=deskreact.vercel.app"
       data-api="https://app.pretasystems.com/v1/api"
       data-ctx-cookie="preta_ctx"
-    ></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    ></script> -->
+
+
+  <script src="https://loader-v1.pretasystems.com/boot?d=deskreact.vercel.app"
+    data-api="https://app.pretasystems.com/v1/api" data-ctx-cookie="preta_ctx" data-debug="true">
+    </script>
+
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
