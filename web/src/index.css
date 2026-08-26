@@ -13,7 +13,14 @@
 
 @layer components {
   .container-page {
-    @apply mx-auto w-full max-w-6xl px-6;
+    /* Wide enough to use a 1080p+ screen properly; the px steps keep small
+       viewports from running text into the edge. */
+    @apply mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8;
+  }
+  /* Long-form pages opt out of the full width — a 1500px line of body copy is
+     unreadable regardless of how much screen you have. */
+  .container-prose {
+    @apply mx-auto w-full max-w-4xl;
   }
   .card {
     @apply rounded-2xl border border-white/10 bg-slate-900/60 p-5;
