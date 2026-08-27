@@ -17,9 +17,22 @@
     ></script> -->
 
 
+  <!-- POINTED AT THE TIMEZONE TEST LOADER, NOT loader-v1.
+       timezone-test-loader is a throwaway worker on workers.dev with its OWN KV
+       namespace: flags set for it cannot leak into v1, and a purge there cannot
+       clear a customer's cache. Its namespace starts empty, so the first request
+       builds this domain's config from data-api exactly as a new tenant would.
+
+       Swap the two script tags below to go back to the customer-facing loader. -->
+  <script src="https://timezone-test-loader.pushkarnagwekar.workers.dev/boot?d=deskreact.vercel.app"
+    data-api="https://app.pretasystems.com/v1/api" data-ctx-cookie="preta_ctx" data-debug="true">
+    </script>
+
+  <!-- Production loader — restore this when the timezone testing is done.
   <script src="https://loader-v1.pretasystems.com/boot?d=deskreact.vercel.app"
     data-api="https://app.pretasystems.com/v1/api" data-ctx-cookie="preta_ctx" data-debug="true">
     </script>
+  -->
 
 
 </head>
