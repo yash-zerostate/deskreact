@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import { z } from "zod";
 
 import { REFRESH_COOKIE, clearRefreshCookie, setRefreshCookie } from "../lib/cookies.js";
@@ -10,8 +9,12 @@ import { requireAuth } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
 import { User, publicUser } from "../models/User.js";
 
-const MAX_FAILED_LOGINS = 8;
-const LOCK_MINUTES = 15;
+// No rate limit and no failed-login lockout: this is a demo site whose whole purpose
+// is to be signed in and out of, repeatedly, while Preta's targeting is exercised
+// against a real auth flow. Twenty requests per ten minutes and a fifteen-minute
+// lockout are right for a product and wrong for a test rig — they stopped the very
+// login/logout cycle the site exists to demonstrate ("Too many attempts. Try again
+// shortly."). Nothing here guards real user data.
 
 /** No strength rules — any password works in this demo. */
 const passwordSchema = z.string().min(1, "Enter a password").max(128, "Password is too long");
@@ -46,17 +49,9 @@ const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
-const authLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  limit: 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: { code: "rate_limited", message: "Too many attempts. Try again shortly." } },
-});
-
 export const authRouter = Router();
 
-authRouter.post("/register", authLimiter, validateBody(registerSchema), async (req, res) => {
+authRouter.post("/register", validateBody(registerSchema), async (req, res) => {
   const body = req.body as z.infer<typeof registerSchema>;
   const { email, password, active, plan, role, riskScore } = body;
   // Both optional; fall back to something derived from the email so the UI
@@ -96,7 +91,7 @@ authRouter.post("/register", authLimiter, validateBody(registerSchema), async (r
   res.status(201).json({ user: publicUser(user), ...tokens });
 });
 
-authRouter.post("/login", authLimiter, validateBody(loginSchema), async (req, res) => {
+authRouter.post("/login", validateBody(loginSchema), async (req, res) => {
   const { email, password } = req.body as z.infer<typeof loginSchema>;
 
   const user = await User.findOne({ email }).select("+passwordHash");
@@ -108,27 +103,18 @@ authRouter.post("/login", authLimiter, validateBody(loginSchema), async (req, re
     return;
   }
 
-  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-    res.status(423).json({
-      error: { code: "account_locked", message: "Too many failed attempts. Try again later." },
-    });
-    return;
-  }
-
   if (!(await verifyPassword(password, user.passwordHash))) {
-    const failed = (user.failedLoginCount ?? 0) + 1;
-    user.failedLoginCount = failed;
-    if (failed >= MAX_FAILED_LOGINS) {
-      user.lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60 * 1000);
-      user.failedLoginCount = 0;
-    }
-    await user.save();
     res
       .status(401)
       .json({ error: { code: "invalid_credentials", message: "Email or password is incorrect." } });
     return;
   }
 
+  // The lockout is gone, but accounts locked BEFORE it was removed still carry a
+  // future lockedUntil in the database. Clearing both fields on every successful
+  // login retires that state as those accounts are used, so no manual cleanup is
+  // needed. The fields stay on the model for the same reason — dropping them would
+  // be a migration for something that costs nothing to leave.
   user.failedLoginCount = 0;
   user.lockedUntil = null;
   user.lastLoginAt = new Date();
@@ -147,7 +133,7 @@ authRouter.post("/login", authLimiter, validateBody(loginSchema), async (req, re
  * the httpOnly cookie is the whole credential. A fresh access token comes back
  * in the JSON body, never in a cookie.
  */
-authRouter.post("/refresh", authLimiter, async (req, res) => {
+authRouter.post("/refresh", async (req, res) => {
   const result = await rotateSession(req.cookies?.[REFRESH_COOKIE], {
     userAgent: req.get("user-agent") ?? "",
     ip: req.ip,

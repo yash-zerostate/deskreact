@@ -55,8 +55,8 @@ shared presentational primitives (banners, tabs, toggles, modals, charts) live i
 
 | Method | Route | Auth |
 |--------|-------|------|
-| `POST` | `/auth/register` | public, rate limited |
-| `POST` | `/auth/login` | public, rate limited, lockout after 8 failures |
+| `POST` | `/auth/register` | public |
+| `POST` | `/auth/login` | public — no rate limit, no lockout (see auth.routes.ts) |
 | `POST` | `/auth/refresh` | refresh **cookie** only — rotates with reuse detection |
 | `POST` | `/auth/logout` | revokes the refresh family server-side |
 | `GET/PATCH` | `/auth/me` | Bearer |
