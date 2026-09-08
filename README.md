@@ -31,9 +31,25 @@ npm run dev               # http://localhost:4003
 |-------|--------|--------------|
 | `/login` | public | Signs in, stores the access token, redirects back to where you were |
 | `/signup` | public | Creates a workspace; the first user becomes its admin |
-| `/` | **protected** | Counts per status + the five highest-priority open tickets |
+| `/welcome` | public | Long marketing page — hero, logo wall, features, four-step flow, testimonials, pricing teaser, FAQ, sticky bar, its own footer |
+| `/knowledge` | public | Knowledge base index: search, category sidebar, article cards, FAQ accordion |
+| `/knowledge/:slug` | public | Full article with table of contents, code blocks, callout, feedback widget, related reading |
+| `/pricing` | public | Plan cards with monthly/annual toggle, 16-row comparison table, testimonials, FAQ, sales modal |
+| `/status` | public | Six components × 60 days of uptime bars, incident history with update timelines |
+| `/changelog` | public | Filterable release timeline, six releases, versioning notes |
+| `/` | **protected** | Status counts, stat tiles, activity feed, weekday chart, quick links, reading list |
 | `/tickets` | **protected** | Queue with server-side filter/search, create, status change, replies |
+| `/reports` | **protected** | Tabbed analytics — volume, response time, channel mix, per-agent table, scheduled reports |
+| `/team` | **protected** | Member table, role legend, hourly coverage chart, invite modal, member detail modal |
+| `/settings` | **protected** | Five tabs — business hours, notification toggles, integrations, sessions, danger zone |
 | `/profile` | **protected** | All six profile attributes, shown and editable |
+| anything else | public | A real 404 page with suggested destinations |
+
+Static page copy and sample data live in [`web/src/lib/content.ts`](web/src/lib/content.ts);
+shared presentational primitives (banners, tabs, toggles, modals, charts) live in
+[`web/src/components/ui.tsx`](web/src/components/ui.tsx). Injectable regions carry
+`data-preta-slot` attributes (`hero`, `banner`, `cta`, `stat-tile`, `plan-card`,
+`sticky-bar`, `section`, `modal`, …) so a loader has stable hooks to target.
 
 ## API
 
