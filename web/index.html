@@ -27,9 +27,19 @@
     })();
   </script>
 
+  <!-- Preta.
+
+       `d=` MUST be this site's own hostname. It is not decoration: /config?d= keys straight into
+       KV as `config:<d>`, so a wrong value serves another tenant's elements inline, and /l/?d=
+       picks the loader bundle variant from that same key. The loader's own runtime, meanwhile,
+       uses window.location.hostname for everything it does after that — so a mismatch means the
+       inline config never matches this page, nothing can paint early from it, and the elements
+       only appear after the loader's later /config fetch for the REAL hostname lands. That is a
+       whole network round trip after the page has already painted, which is exactly the lateness
+       this setup exists to avoid. -->
   <link rel="preconnect" href="https://loader-v1.pretasystems.com" />
-  <script src="https://loader-v1.pretasystems.com/config?d=saas-nextjs-flax.vercel.app"></script>
-  <script src="https://loader-v1.pretasystems.com/l/pretaloader.js?d=saas-nextjs-flax.vercel.app"
+  <script src="https://loader-v1.pretasystems.com/config?d=deskreact.vercel.app"></script>
+  <script src="https://loader-v1.pretasystems.com/l/pretaloader.js?d=deskreact.vercel.app"
     data-api="https://app.pretasystems.com/v1/api" data-ctx-cookie="preta_ctx" data-debug="true"></script>
 
 
