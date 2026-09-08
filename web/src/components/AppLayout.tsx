@@ -1,9 +1,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/auth/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
+// "/" is the public marketing page now, so the app's own overview lives at /app.
 const NAV = [
-  { to: "/", label: "Overview", end: true },
+  { to: "/", label: "Home", end: true },
+  { to: "/app", label: "Overview", end: true },
   { to: "/tickets", label: "Tickets", end: false },
   { to: "/profile", label: "Profile", end: false },
 ];
@@ -45,6 +48,7 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <span className="hidden text-xs text-slate-400 sm:inline">
               {user?.workspace} · <span className="uppercase">{user?.plan}</span> · {user?.role} ·
               risk {user?.riskScore}

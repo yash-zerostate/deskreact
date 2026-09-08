@@ -2,12 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * LIGHT IS THE DEFAULT, dark is a choice.
+ *
+ * Every rule below is written light-first with a `dark:` override, so the base styles are the ones
+ * a visitor sees before anything has run. The alternative — dark base with a `light:` override —
+ * cannot exist in Tailwind, and writing the dark styles as the base would mean a visitor who has
+ * never chosen anything gets dark until JavaScript says otherwise.
+ *
+ * The page classes are all defined here rather than repeated per component, so a page that was
+ * written before the theme existed follows it too, instead of staying dark in a light site.
+ */
+
 @layer base {
   html {
+    color-scheme: light;
+  }
+  html.dark {
     color-scheme: dark;
   }
   body {
-    @apply bg-slate-925 text-slate-200 antialiased;
+    @apply bg-white text-slate-700 antialiased dark:bg-slate-925 dark:text-slate-200;
   }
 }
 
@@ -16,14 +31,18 @@
     @apply mx-auto w-full max-w-6xl px-6;
   }
   .card {
-    @apply rounded-2xl border border-white/10 bg-slate-900/60 p-5;
+    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm
+           dark:border-white/10 dark:bg-slate-900/60 dark:shadow-none;
   }
   .input {
-    @apply w-full rounded-xl border border-white/10 bg-slate-925 px-4 py-2.5 text-sm text-slate-100
-           outline-none transition placeholder:text-slate-500 focus:border-iris-500/60 focus:ring-2 focus:ring-iris-500/20;
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900
+           outline-none transition placeholder:text-slate-400
+           focus:border-iris-500/60 focus:ring-2 focus:ring-iris-500/20
+           dark:border-white/10 dark:bg-slate-925 dark:text-slate-100 dark:placeholder:text-slate-500;
   }
   .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-400;
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-slate-500
+           dark:text-slate-400;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
@@ -33,13 +52,15 @@
     @apply btn bg-iris-500 text-white hover:bg-iris-600;
   }
   .btn-ghost {
-    @apply btn border border-white/10 text-slate-200 hover:border-white/25 hover:bg-white/5;
+    @apply btn border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50
+           dark:border-white/10 dark:text-slate-200 dark:hover:border-white/25 dark:hover:bg-white/5;
   }
   .chip {
-    @apply inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5
-           text-[11px] font-medium uppercase tracking-wider text-slate-300;
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5
+           text-[11px] font-medium uppercase tracking-wider text-slate-600
+           dark:border-white/10 dark:bg-white/5 dark:text-slate-300;
   }
   .field-error {
-    @apply mt-1 text-xs text-rose-400;
+    @apply mt-1 text-xs text-rose-500 dark:text-rose-400;
   }
 }

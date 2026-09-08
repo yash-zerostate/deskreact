@@ -7,15 +7,25 @@
   <title>DeskDesk — shared inbox for support teams</title>
   <meta name="description"
     content="DeskDesk is a small, fast shared inbox: tickets, replies and status, without the bloat." />
-  <!-- Preta loader. The signed context JWT lives in the `preta_ctx` cookie, which
-         this app writes on its own origin after login (see src/lib/preta.ts) — the
-         API is on another domain, so a cookie set there would not be readable here. -->
-  <!-- <script
-      src="https://yash-loader-worker.pushkarnagwekar.workers.dev/boot?d=deskreact.vercel.app"
-      data-api="https://app.pretasystems.com/v1/api"
-      data-ctx-cookie="preta_ctx"
-    ></script> -->
 
+
+  <!-- Theme, before anything paints.
+
+       The site defaults to LIGHT, so the untouched state needs no class and no script to look
+       right. This exists only for the visitor who previously chose dark: without it the page
+       paints white, React mounts, and the class lands a frame later — a white flash on every
+       single load, which is worse than the thing the toggle was added for.
+
+       Reads the same key as src/lib/theme.ts. Keep the two in step. -->
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('deskdesk_theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) { /* storage blocked — light is still the right default */ }
+    })();
+  </script>
 
   <script src="https://loader-v1.pretasystems.com/boot?d=deskreact.vercel.app"
     data-api="https://app.pretasystems.com/v1/api" data-ctx-cookie="preta_ctx" data-debug="true">
