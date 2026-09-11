@@ -76,12 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * would only discover the expiry by making a request that fails first.
    */
   const scheduleRefresh = useCallback(
-    (expiresIn: number) => {
+    (expiresIn: number, delayMs = Math.max(30, expiresIn - 60) * 1000) => {
       clearTimer();
-      const delayMs = Math.max(30, expiresIn - 60) * 1000;
       refreshTimer.current = window.setTimeout(async () => {
-        const ok = await refreshSession();
-        if (ok) scheduleRefresh(expiresIn);
+        const outcome = await refreshSession();
+        if (outcome === "ok") scheduleRefresh(expiresIn);
+        // A network blip or a sleeping API is retried shortly; only a refused
+        // refresh cookie ends the session.
+        else if (outcome === "unavailable") scheduleRefresh(expiresIn, 30_000);
         else setUser(null);
       }, delayMs);
     },
@@ -98,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // No access token, but a refresh cookie may still be valid (e.g. the
         // tab was closed for an hour) — try once before giving up.
         const refreshed = await refreshSession();
-        if (!refreshed) {
+        if (refreshed !== "ok") {
           if (!cancelled) setLoading(false);
           return;
         }
@@ -109,9 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.ok) {
         setUser(result.data.user);
         scheduleRefresh(15 * 60);
-      } else {
+      } else if (result.status === 401) {
         setAccessToken(null);
       }
+      // Any other failure keeps the stored token. The commonest one is this very
+      // request being cancelled by another reload — its fetch rejects while the old
+      // page is still unloading, and wiping the token then is what logged people out.
       setLoading(false);
     })();
 

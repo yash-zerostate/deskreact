@@ -34,6 +34,8 @@ export const config = {
   jwtSecret,
   accessTtlMinutes: int("ACCESS_TOKEN_TTL_MIN", 15),
   refreshTtlDays: int("REFRESH_TOKEN_TTL_DAYS", 30),
+  // How long a just-rotated refresh token is still accepted (see rotateSession).
+  refreshReuseGraceSeconds: int("REFRESH_REUSE_GRACE_SECONDS", 60),
   port: int("PORT", 5003),
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:4003",
   isProd: process.env.NODE_ENV === "production",

@@ -21,7 +21,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5003";
 const ACCESS_TOKEN_KEY = "deskdesk_access_token";
 
 let accessToken: string | null = null;
-let refreshPromise: Promise<boolean> | null = null;
+let refreshPromise: Promise<RefreshOutcome> | null = null;
 let onSessionLost: (() => void) | null = null;
 
 export function loadStoredToken(): string | null {
@@ -85,24 +85,33 @@ async function rawFetch(path: string, init: RequestInit, withAuth: boolean): Pro
   });
 }
 
+/**
+ * `rejected` — the API refused the refresh cookie; the session is really over.
+ * `unavailable` — the request never got a verdict: network down, the API asleep or
+ * erroring, or a page reload cancelling the fetch mid-flight. That must never sign
+ * anyone out, or reloading quickly a few times wipes a perfectly good session.
+ */
+export type RefreshOutcome = "ok" | "rejected" | "unavailable";
+
 /** Rotate the refresh token. Concurrent callers share one in-flight attempt. */
-export function refreshSession(): Promise<boolean> {
-  refreshPromise ??= (async () => {
+export function refreshSession(): Promise<RefreshOutcome> {
+  refreshPromise ??= (async (): Promise<RefreshOutcome> => {
     try {
       const response = await rawFetch("/auth/refresh", { method: "POST" }, false);
-      if (!response.ok) {
+      if (response.status === 401) {
         setAccessToken(null);
         clearPretaCookie();
-        return false;
+        return "rejected";
       }
+      if (!response.ok) return "unavailable";
       const body = (await response.json()) as { accessToken: string; pretaToken?: string | null };
       setAccessToken(body.accessToken);
       // The silent refresh doubles as the Preta cookie's refresh — nothing extra to
       // schedule, and the cookie can never outlive the session that produced it.
       setPretaCookie(body.pretaToken);
-      return true;
+      return "ok";
     } catch {
-      return false;
+      return "unavailable";
     } finally {
       // Clear on the next tick so everyone awaiting this attempt sees its result.
       queueMicrotask(() => {
@@ -131,7 +140,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<ApiR
 
   // One silent refresh, then replay the original request exactly once.
   const refreshed = await refreshSession();
-  if (!refreshed) {
+  if (refreshed === "unavailable") {
+    return {
+      ok: false,
+      status: 503,
+      code: "api_unreachable",
+      message: `Could not reach the API at ${API_URL}.`,
+    };
+  }
+  if (refreshed === "rejected") {
     onSessionLost?.();
     return {
       ok: false,

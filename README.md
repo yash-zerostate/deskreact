@@ -86,6 +86,13 @@ Consequences worth understanding:
   once**. Concurrent 401s share a single in-flight refresh — rotating the
   refresh token twice in parallel would look like token reuse and log the user
   out, which is exactly the bug this avoids.
+- Only a `401` ends the session in the SPA. A network error, a `5xx`, or a request
+  cancelled by a page reload keeps the stored token, so reloading repeatedly
+  never signs anyone out.
+- A reload can cancel a refresh after the API rotated the token but before the
+  new cookie reached the browser. The API therefore accepts a token rotated in
+  the last `REFRESH_REUSE_GRACE_SECONDS` (default 60) instead of treating it as
+  reuse — unless the session was since ended by logout or reuse detection.
 - `AuthContext` also refreshes proactively one minute before expiry, so an idle
   tab is not one click away from a failed request.
 - On a cold load with no access token it still tries `POST /auth/refresh` once —

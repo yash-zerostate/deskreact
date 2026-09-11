@@ -89,13 +89,32 @@ export async function rotateSession(
   if (!record) return { ok: false, reason: "invalid" };
 
   if (record.revokedAt) {
-    // The token was already rotated away, so a copy is in circulation. Kill the
-    // whole family rather than trusting whoever presented it.
-    await RefreshToken.updateMany(
-      { familyId: record.familyId, revokedAt: null },
-      { $set: { revokedAt: new Date() } },
-    );
-    return { ok: false, reason: "reused" };
+    // A token rotated moments ago is almost always the browser, not a thief: the
+    // refresh reached us and rotated, but the page reloaded before the response —
+    // and its Set-Cookie — arrived, so the old cookie is still all it has.
+    const rotatedJustNow =
+      Boolean(record.replacedByHash) &&
+      Date.now() - record.revokedAt.getTime() <= config.refreshReuseGraceSeconds * 1000;
+
+    if (!rotatedJustNow) {
+      // The token was already rotated away, so a copy is in circulation. Kill the
+      // whole family rather than trusting whoever presented it.
+      await RefreshToken.updateMany(
+        { familyId: record.familyId, revokedAt: null },
+        { $set: { revokedAt: new Date() } },
+      );
+      return { ok: false, reason: "reused" };
+    }
+
+    // Logout and reuse detection revoke tokens WITHOUT a successor. If the family
+    // has one of those, the session was ended on purpose — the grace window must
+    // not bring it back.
+    const ended = await RefreshToken.exists({
+      familyId: record.familyId,
+      revokedAt: { $ne: null },
+      replacedByHash: null,
+    });
+    if (ended) return { ok: false, reason: "revoked" };
   }
 
   if (record.expiresAt.getTime() < Date.now()) {
@@ -121,8 +140,10 @@ export async function rotateSession(
     ip: ctx.ip ?? record.ip,
   });
 
+  // `revokedAt: null` makes this a no-op on a grace-window replay, so replaying the
+  // old cookie cannot keep pushing its revocation time forward.
   await RefreshToken.updateOne(
-    { _id: record._id },
+    { _id: record._id, revokedAt: null },
     { $set: { revokedAt: new Date(), replacedByHash: nextHash } },
   );
 
