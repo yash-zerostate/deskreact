@@ -9,6 +9,7 @@ import morgan from "morgan";
 import { config } from "./config/env.js";
 import { errorHandler, notFound } from "./middleware/errors.js";
 import { authRouter } from "./routes/auth.routes.js";
+import { leadsRouter } from "./routes/leads.routes.js";
 import { ticketsRouter } from "./routes/tickets.routes.js";
 
 export function createApp() {
@@ -26,7 +27,9 @@ export function createApp() {
     cors({
       origin: [config.webOrigin],
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      // X-Preta-Request-Id: Preta's modal answers send it to POST /leads; without it the
+      // browser's preflight fails and the lead is lost.
+      allowedHeaders: ["Content-Type", "Authorization", "X-Preta-Request-Id"],
       methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
   );
@@ -41,6 +44,8 @@ export function createApp() {
 
   app.use("/auth", authRouter);
   app.use("/tickets", ticketsRouter);
+  // Preta "Direct to you" form delivery: public, called from the visitor's browser.
+  app.use("/leads", leadsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

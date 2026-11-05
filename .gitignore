@@ -1,0 +1,4 @@
+# Key files stay out of git. The live signing key lives in api/.env (PRETA_PRIVATE_KEY).
+*.pem
+# The public half Preta verifies with is safe to share and stays tracked.
+!api/deskdesk-public.pem
